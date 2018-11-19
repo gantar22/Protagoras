@@ -534,7 +534,12 @@ public class Party_manager
         foreach(int conn_id in player_table.Keys)
         {
             party.Add(player_table[party_table[conn_id].leader].name);
-            party.Concat(party_table[conn_id].players.Select(id => player_table[id].name).ToList());
+            foreach(int id in player_table.Keys)
+            {
+                if (party_table[id] == party_table[conn_id] && id != party_table[id].leader)
+                    party.Add(player_table[id].name);
+            }
+            //party.Concat(party_table[conn_id].players.Select(id => player_table[id].name).ToList());
             send_party_to_player(conn_id, party);
             party = new List<string>();
         }
@@ -552,7 +557,7 @@ public class Party_manager
                 Connection_status status = player_table.Values.Where(p => p.name == friend).FirstOrDefault();
                 if(status != null)
                 {
-                    bool is_in_party = party_table[status.conn_id].players.Count > 0; 
+                    bool is_in_party = party_table[status.conn_id].players.Any(_ => true); 
                         //if they are the sole member, then they are the leader
                     css.Add(new connection_struct(friend, status.is_in_game,is_in_party, status.current_game, true,conn_id));
                 } else
@@ -609,7 +614,7 @@ public class Protagoras : MonoBehaviour {
     HostTopology topology;
     int host;
 
-    const int port = 15152;
+    const int port = 15150;
     const int MAX_PLAYERS = 100;
 
     Party_manager pm;
