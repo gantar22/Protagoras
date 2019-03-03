@@ -163,7 +163,7 @@ public struct connection_struct
 
 
 
-public enum GAME { Cloak_and_Dagger}
+public enum GAME { Cloak_and_Dagger, redhook}
 
 
 public class User_info
@@ -518,7 +518,7 @@ public class Party_manager
         {
             player_table[party_table[ender].players[i]].is_in_game = false;
         }
-        end_msg(party_table[ender].players);
+        announcement(ender, end_msg);
         return true;
     }
 
@@ -531,7 +531,7 @@ public class Party_manager
     public void inform_player_of_party(Action<int,List<string>> send_party_to_player)
     {
         List<string> party = new List<string>();
-        foreach(int conn_id in player_table.Keys)
+        foreach(int conn_id in player_table.Keys.Where(i => !player_table[i].is_in_game))
         {
             party.Add(player_table[party_table[conn_id].leader].name);
             foreach(int id in player_table.Keys)
@@ -678,14 +678,16 @@ public class Protagoras : MonoBehaviour {
             || _type == Custom_msg_type.ADD_FRIEND) && name == "")
             msg.arg1 = pm.get_name(actor); //arg2 could be a custom message?
         else msg.arg1 = name;
-        print($"sending message of {msg.arg1} to {recipient}");
+        print($"sending message of {msg.arg1} to {recipient} with type {_type}");
         Message_package msg_p = new Message_package();
         msg_p.type = _type;
         msg_p.message = msg;
         data = format_data(msg_p);
         byte error = (byte)0;
 
-        return (() => NetworkTransport.Send(host_id, recipient, channel_id, data, data.Length, out error));
+        return (() => 
+        { NetworkTransport.Send(host_id, recipient, channel_id, data, data.Length, out error); print((NetworkError)error); });
+        
     }
 
     Action<List<int>> start_end_action(Custom_msg_type _type, int channel_id,int host_id)
@@ -747,7 +749,7 @@ public class Protagoras : MonoBehaviour {
                 string name = msg.arg1;
                 string hashed_password = msg.arg2;
                 GAME title = (GAME)msg.target_connection;
-                print($"login as name {name} and pass {hashed_password}");
+                print($"login as name {name} and pass {hashed_password} @ {conn_id}");
                 Tuple<bool,List<string>> pi = pm.login_player(name, hashed_password, conn_id, title);
                 if (!pi.Item1)
                 { send_action(Custom_msg_type.LOGIN, 0, conn_id, channel_id, host)(); }
@@ -811,7 +813,7 @@ public class Protagoras : MonoBehaviour {
             case Custom_msg_type.START_GAME:
                 //action that sends start game msg to clients
 
-
+                print($"{conn_id} is trying to start a game");
                 pm.start_game(conn_id, start_end_action(Custom_msg_type.START_GAME, channel_id, host));
                 //pm.start_game
                 break;
@@ -847,7 +849,7 @@ public class Protagoras : MonoBehaviour {
                     if(pi2.Item2 != -1)
                     {
                         print($"{pi2.Item2} is online");
-                        send_action(Custom_msg_type.GET_FRIEND, conn_id, pi2.Item2, channel_id, host);
+                        send_action(Custom_msg_type.GET_FRIEND, conn_id, pm.get_conn_id(msg.arg1), channel_id, host)();
                     }
                 }
                 else
